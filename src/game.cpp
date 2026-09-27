@@ -617,7 +617,6 @@ void setupGame() {
 // called by main when an NFC tag is scanned: start that tag's task minigame.
 // Allowed in LOBBY too so a single badge can test tasks without a full game.
 void gameOnNfc(const char *uid) {
-  if (myRole == ROLE_IMP) return;  // imposters can't do tasks at all, not even for cover
   int mi = rosterIndexOfId(myId());
   bool alive = (mi < 0) || aliveIdx(mi);
   if ((phase == G_PLAYING || phase == G_LOBBY) && alive && !taskActive()) taskTryStart(uid);

@@ -6,9 +6,8 @@
 // depend on reliably reading/pairing individual tag UIDs. Wires and Garbage
 // are first so a time-boxed demo (e.g. one showcased per judge) always
 // reaches those two; Window Wipe and Rhythm exist to show there's more depth,
-// without needing to actually be reached live. This module itself doesn't
-// enforce who's allowed to play -- game.cpp's gameOnNfc() blocks imposters
-// from starting a task at all before it ever reaches taskTryStart().
+// without needing to actually be reached live. Role permissions and progress
+// accounting are handled by game.cpp.
 
 #define NUM_TASKS 4
 
