@@ -6,11 +6,15 @@
 #include "leds.h"
 #include "imu.h"
 
-// ---- window cleaning: hold the badge upright and fan-wipe like a squeegee ----
-// The squeegee follows the badge's tilt ANGLE (fan it side to side) and only
-// scrubs while you're wiping with FORCE. Grime clears in shades so you see where
-// you've wiped. Done at 85%. Hold the screen up (not flat) so gravity registers
-// the tilt; wherever you start becomes the fan center.
+// ---- window cleaning: wipe the badge back and forth like a squeegee ----
+// After a short "get ready" countdown, every back-and-forth stroke scrubs some
+// grime off; harder strokes scrub more. Holding the badge still -- in ANY
+// orientation -- does nothing. Grime clears left to right in shades. Done at 85%.
+//
+// Stroke detection: a slow baseline tracks the raw accel vector (gravity, sensor
+// offset, however the badge is held) and is subtracted off, leaving only motion.
+// A stroke counts when that motion is strong enough AND points opposite to the
+// previous stroke, so the badge has to actually reverse direction.
 #define WIN_NCOLS 14
 #define WIN_GMAX  3.0f
 #define WX     20
@@ -19,8 +23,13 @@
 #define WH     150
 #define WCOLW  (WW / WIN_NCOLS)   // 20 px
 #define WSQW    28
-#define WIPE_DEAD 0.18f           // ignore gentle handling below this shake force (g)
-#define WIPE_RATE 0.55f           // grime scrubbed per unit of shake force, per frame
+#define WIPE_BUFFER_MS 5000       // "get ready" countdown before wiping counts
+#define WIPE_BASE_TAU  300.0f     // ms; baseline time constant (longer = slower to absorb a pose)
+#define STROKE_G       0.5f       // motion (g) needed for a stroke
+#define STROKE_REARM_G 0.25f      // motion must settle below this between strokes (hysteresis)
+#define STROKE_MIN_MS  180        // min time between strokes -- one per half-swing, not per jitter
+#define STROKE_MAX_X   1.5f       // a hard stroke scrubs up to this many times a gentle one
+#define STROKE_CLEAN   1.2f       // grime scrubbed by a gentle stroke (window total = NCOLS*GMAX)
 
 static float winGrime[WIN_NCOLS];   // remaining grime per column (0..WIN_GMAX)
 static int   winShade[WIN_NCOLS];   // last-drawn shade per column
@@ -29,10 +38,62 @@ static float winCleaned;            // total grime scrubbed off (0 .. NCOLS*GMAX
 static int   winPct;               // last-drawn percent
 static bool drawn = false;
 
+static unsigned long winStartMs, winLastMs;
+static int   winCountShown;         // last countdown second drawn (0 = wiping)
+static bool  baseSeeded;
+static float baseX, baseY, baseZ;   // slow-tracking accel baseline (g)
+static bool  haveDir;               // has a stroke happened yet?
+static float dirX, dirY, dirZ;      // unit direction of the last stroke
+static bool  strokeArmed;           // motion has settled since the last stroke
+static unsigned long lastStrokeMs;
+
 static void start() {
   for (int i = 0; i < WIN_NCOLS; i++) { winGrime[i] = WIN_GMAX; winShade[i] = -1; }
   winSqX = 20; winPrevSqX = -1000; winCleaned = 0; winPct = -1;
+  winStartMs = winLastMs = millis();
+  winCountShown = -1;
+  baseSeeded = false; haveDir = false;
+  strokeArmed = true; lastStrokeMs = 0;
   drawn = false;
+}
+
+// Feed one accel sample; returns the scrub amount of a stroke this frame (0 if none).
+static float detectStroke() {
+  float ax = baseX, ay = baseY, az = baseZ;
+  getAccel(ax, ay, az);   // leaves the values untouched on a bad read
+  unsigned long now = millis();
+  if (!baseSeeded) {
+    baseX = ax; baseY = ay; baseZ = az;
+    baseSeeded = true; winLastMs = now;
+    return 0;
+  }
+  float dt = (float)(now - winLastMs); winLastMs = now;
+  float k = dt / (WIPE_BASE_TAU + dt);
+  baseX += (ax - baseX) * k; baseY += (ay - baseY) * k; baseZ += (az - baseZ) * k;
+
+  float hx = ax - baseX, hy = ay - baseY, hz = az - baseZ;
+  float mag = sqrtf(hx * hx + hy * hy + hz * hz);
+  if (mag < STROKE_REARM_G) strokeArmed = true;
+  if (!strokeArmed || mag < STROKE_G) return 0;
+  if (now - lastStrokeMs < STROKE_MIN_MS) return 0;
+  if (haveDir && hx * dirX + hy * dirY + hz * dirZ >= 0) return 0;  // same way as last stroke
+
+  haveDir = true;
+  strokeArmed = false;
+  lastStrokeMs = now;
+  dirX = hx / mag; dirY = hy / mag; dirZ = hz / mag;
+  float x = mag / STROKE_G;
+  if (x > STROKE_MAX_X) x = STROKE_MAX_X;
+  return STROKE_CLEAN * x;
+}
+
+// the "get ready" countdown, drawn over the middle of the glass
+static void drawCountdown(int secs) {
+  gfxFillRect(90, 80, 140, 80, NAVY);
+  gfxRectOutline(90, 80, 140, 80, WHITE);
+  gfxText(107, 92, 2, WHITE, "GET READY");
+  char b[4]; snprintf(b, sizeof(b), "%d", secs);
+  gfxText(151, 118, 4, YELLOW, b);
 }
 
 static uint16_t grimeColor(int shade) {
@@ -79,7 +140,7 @@ static void run() {
   if (!drawn) {
     gfxClear(NAVY);
     gfxText(48, 10, 3, WHITE, "WINDOW WIPE");
-    gfxText(30, 224, 2, gfxColor(140, 140, 160), "shake hard to wipe");
+    gfxText(30, 224, 2, gfxColor(140, 140, 160), "wipe back and forth");
     gfxRectOutline(WX - 3, WY - 3, WW + 6, WH + 6, gfxColor(90, 90, 110));
     for (int c = 0; c < WIN_NCOLS; c++) {
       int s = grimeShade(winGrime[c]);
@@ -90,11 +151,24 @@ static void run() {
     drawn = true;
   }
 
-  // clean in proportion to how HARD you shake (force above a small deadband)
-  float mag = getAccelMagnitude();
-  float force = mag - 1.0f - WIPE_DEAD;
-  if (force > 0) {
-    winCleaned += force * WIPE_RATE;
+  // keep the baseline settling during the countdown, but don't scrub yet
+  float scrub = detectStroke();
+  unsigned long elapsed = millis() - winStartMs;
+  if (elapsed < WIPE_BUFFER_MS) {
+    int secs = (int)((WIPE_BUFFER_MS - elapsed + 999) / 1000);
+    if (secs != winCountShown) { winCountShown = secs; drawCountdown(secs); }
+    return;
+  }
+  if (winCountShown != 0) {           // countdown over: uncover the glass
+    winCountShown = 0;
+    winRepaint(WX, WX + WW);
+    haveDir = false;                  // first real stroke may go either way
+    scrub = 0;
+    flashLEDs(0, 120, 200, 150);
+  }
+
+  if (scrub > 0) {
+    winCleaned += scrub;
     if (winCleaned > WIN_NCOLS * WIN_GMAX) winCleaned = WIN_NCOLS * WIN_GMAX;
   }
 
@@ -150,4 +224,4 @@ static void run() {
   if (pct >= 85) { flashLEDs(0, 220, 0, 400); taskFinish(); return; }
 }
 
-extern const TaskDef TASK_WINDOW_WIPE = { "WINDOW WIPE", "047CBF97DD2A81", start, run, 20000 };
+extern const TaskDef TASK_WINDOW_WIPE = { "WINDOW WIPE", "047CBF97DD2A81", start, run, WIPE_BUFFER_MS + 20000 };

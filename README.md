@@ -81,7 +81,7 @@ launch its minigame:
 |---|---|---|
 | Wires | Button sequence | Enter the shown sequence of arrows/A/B (5 inputs), 3 rounds |
 | Garbage | Tilt maze | Tilt the badge to roll the trash around randomized walls into the chute, 3 times |
-| Window wipe | Shake to clean | Hold the badge upright and fan-wipe it; harder wipes clean faster. Done at 85% |
+| Window wipe | Wipe to clean | After a 5s "get ready" countdown, wipe the badge back and forth; each change of direction scrubs, harder strokes scrub more. Holding it still at any angle does nothing. Done at 85% |
 | Rhythm | DDR | Hit the matching D-pad direction as arrows cross the line; 8 hits |
 
 Rules:
@@ -94,7 +94,7 @@ Rules:
 - Only living crewmates get credit. Imposters can play tasks to blend in, but
   completing one does nothing; holding A for a second mid-task sabotages
   instead.
-- Any minigame times out after 20s, and any meeting cancels an in-progress task.
+- Each minigame has its own time limit (the `timeoutMs` in its `TaskDef`), and any meeting cancels an in-progress task.
 
 To use your own tags, flip AUX1 on, scan each one, copy the UID printed on the
 serial monitor into the matching task file in `src/tasks/`, and reflash.
