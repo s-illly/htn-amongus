@@ -297,6 +297,28 @@ void showVote(const char *name, int colorR, int colorG, int colorB,
   tft.print(buf);
 }
 
+void showVoteDead(int secondsLeft) {
+  tft.fillScreen(C_NAVY);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextSize(3);
+  tft.setCursor(70, 18);
+  tft.print("VOTE OUT");
+
+  tft.setTextColor(C_RED, C_NAVY);
+  tft.setTextSize(3);
+  tft.setCursor(61, 100);
+  tft.print("YOU'RE DEAD");
+  tft.setTextColor(tft.color565(185, 185, 205), C_NAVY);
+  tft.setTextSize(2);
+  tft.setCursor(100, 140);
+  tft.print("can't vote");
+
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%2ds", secondsLeft);
+  tft.setCursor(24, 205);
+  tft.print(buf);
+}
+
 void showResult(const char *ejName, int ejR, int ejG, int ejB,
                 bool skipped, bool wasImpostor,
                 int nTally, const uint8_t *talR, const uint8_t *talG,

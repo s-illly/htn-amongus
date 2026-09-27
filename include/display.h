@@ -37,6 +37,9 @@ void showTaskAlreadyCompleted(const char *taskName);
 void showVote(const char *name, int colorR, int colorG, int colorB,
               bool isSkip, int secondsLeft, bool alreadyVoted);
 
+// Voting screen for a dead player: they watch the countdown but can't vote.
+void showVoteDead(int secondsLeft);
+
 // Result of a vote: who was ejected (+ imposter reveal, or skipped), plus a
 // tally row of mini color icons with how many votes each color got.
 void showResult(const char *ejName, int ejR, int ejG, int ejB,

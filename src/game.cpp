@@ -231,6 +231,13 @@ static void hostStartGame() {
 }
 
 static void hostRecordVote(const char *voter, const char *target) {
+  // only living players vote, and only for living players (or SKIP)
+  int vi = rosterIndexOfId(voter);
+  if (vi < 0 || !aliveIdx(vi)) return;
+  if (strncmp(target, "SKIP", 4) != 0) {
+    int ti = rosterIndexOfId(target);
+    if (ti < 0 || !aliveIdx(ti)) return;
+  }
   for (int i = 0; i < nVotes; i++)
     if (strncmp(voters[i], voter, ID_LEN) == 0) return;
   if (nVotes < MAX_PLAYERS) {
@@ -613,11 +620,26 @@ static void discussInput() {
   if (isButtonPressed(BTN_B)) { if (isHost) { nVotes = 0; setPhaseHost(G_VOTING, cfgVote); } else req("RE"); }
 }
 
-static void votingInput() {
+static bool iAmAlive() {
+  int mi = rosterIndexOfId(myId());
+  return (mi < 0) || aliveIdx(mi);
+}
+
+// step the vote cursor by dir (+1/-1), skipping dead players; SKIP (0) is
+// always a valid stop, so this terminates
+static void stepVoteSel(int dir) {
   int choices = rosterCount() + 1;  // SKIP + players
+  do {
+    voteSel = (voteSel + dir + choices) % choices;
+  } while (voteSel != 0 && !aliveIdx(voteSel - 1));
+  needRedraw = true;
+}
+
+static void votingInput() {
+  if (!iAmAlive()) return;  // the dead don't vote
   if (!myVoted) {
-    if (isButtonPressed(BTN_LEFT))  { voteSel = (voteSel + choices - 1) % choices; needRedraw = true; }
-    if (isButtonPressed(BTN_RIGHT)) { voteSel = (voteSel + 1) % choices; needRedraw = true; }
+    if (isButtonPressed(BTN_LEFT))  stepVoteSel(-1);
+    if (isButtonPressed(BTN_RIGHT)) stepVoteSel(+1);
     if (isButtonPressed(BTN_A)) {
       const char *target = (voteSel == 0) ? "SKIP" : rosterId(voteSel - 1);
       char m[24]; snprintf(m, sizeof(m), "V:%s:%s", myId(), target);
@@ -628,6 +650,9 @@ static void votingInput() {
 }
 
 static void renderVote() {
+  if (!iAmAlive()) { showVoteDead(remainingSecs()); return; }
+  // the ALIVE list may land after the cursor did; never show a dead pick
+  if (voteSel != 0 && !aliveIdx(voteSel - 1)) voteSel = 0;
   const char *name; int r, g, b; bool isSkip;
   if (voteSel == 0) { name = "SKIP"; isSkip = true; r = g = b = 0; }
   else { const PlayerColor &c = colorByIndex(rosterColorIndex(voteSel - 1)); name = c.name; isSkip = false; r = c.r; g = c.g; b = c.b; }

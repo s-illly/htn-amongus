@@ -62,7 +62,7 @@ actively doing a task so a stray tag doesn't pop a minigame up.
 | **Gather** (meeting called) | A | Move to discussion |
 | | B | Cancel, return to playing |
 | **Discuss** | B | End discussion early, move to voting |
-| **Voting** | LEFT / RIGHT | Cycle your vote target (players, or SKIP) |
+| **Voting** | LEFT / RIGHT | Cycle your vote target (living players, or SKIP). Dead players can't vote and can't be voted for. |
 | | A | Cast your vote |
 | **Game over** | START | Return to the lobby (host only) |
 
