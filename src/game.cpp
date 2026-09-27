@@ -14,6 +14,7 @@
 #define KILL_RSSI    -66    // ~within a couple meters; tune on hardware
 #define REPORT_RSSI  -66
 #define KILL_HOLD_MS 700
+#define SABOTAGE_HOLD_MS 1000
 #define KILL_CD_MS   20000
 
 // How many of the NUM_TASKS minigames each crewmate must finish for their
@@ -93,9 +94,12 @@ static bool bodyNearby = false;  // drives the "hold B to report" HUD hint
 static int lastKillCdShown = -1; // drives the role-card cooldown redraw tick
 static unsigned long lastAskMs = 0; // retry cadence for a missed role assignment
 
-// crew task progress (host authoritative, broadcast via PROG)
+// Global task progress (host authoritative, broadcast via PROG). Crew task
+// completions add to it; imposter sabotage subtracts from it.
 static int taskDone = 0, taskTotal = 0;
 static int taskCredit[MAX_PLAYERS];  // host-only: completions credited per roster slot, capped at TASKS_TO_WIN
+static unsigned long sabotageDownAt = 0;
+static bool sabotageUsed = false;    // one sabotage per physical A hold
 
 // ---------- helpers ----------
 static void storeImpTeam(const char *csv) {
@@ -358,6 +362,20 @@ static void hostTaskDone(const char *id) {
   }
 }
 
+// An imposter can sabotage once while playing a task. The host owns the
+// progress value, so every badge sees the same decrement through PROG.
+static bool hostSabotage(const char *id) {
+  if (phase != G_PLAYING) return false;
+  int i = rosterIndexOfId(id);
+  if (i < 0 || !aliveIdx(i) || roleIdx(i) != ROLE_IMP) return false;
+  if (taskDone > 0) taskDone--;
+  char pm[24]; snprintf(pm, sizeof(pm), "PROG:%d:%d", taskDone, taskTotal);
+  broadcastMessage(pm);
+  char sm[16]; snprintf(sm, sizeof(sm), "SABOK:%s", id);
+  broadcastMessage(sm);
+  return true;
+}
+
 // ---------- message handling (all badges) ----------
 static bool applyColorMap(const char *spec) {
   struct Assignment { char id[ID_LEN]; int color; };
@@ -434,6 +452,11 @@ void gameHandleMessage(const char *msg) {
     parseTally(msg + 4); needRedraw = true;
   } else if (strncmp(msg, "PROG:", 5) == 0) {
     sscanf(msg, "PROG:%d:%d", &taskDone, &taskTotal); needRedraw = true;
+  } else if (strncmp(msg, "SABOK:", 6) == 0) {
+    if (strcmp(msg + 6, myId()) == 0 && taskActive()) {
+      taskCancel();
+      needRedraw = true;
+    }
   } else if (strncmp(msg, "WIN:", 4) == 0) {
     winSide = msg[4]; needRedraw = true;
   } else if (strncmp(msg, "DEAD:", 5) == 0) {
@@ -450,6 +473,8 @@ void gameHandleMessage(const char *msg) {
     hostReport(msg + 4);
   } else if (isHost && strncmp(msg, "TDONE:", 6) == 0) {
     hostTaskDone(msg + 6);
+  } else if (isHost && strncmp(msg, "SAB:", 4) == 0) {
+    hostSabotage(msg + 4);
   } else if (isHost && strncmp(msg, "ASK:", 4) == 0) {
     hostAssignLate(msg + 4);
   } else if (isHost && strncmp(msg, "RM:", 3) == 0) {
@@ -643,6 +668,11 @@ void gameUpdate() {
   if (homeTapped && phase == G_PLAYING) callMeeting();  // tap HOME -> meeting
 
   // ---- task minigame overlay (local, during play only) ----
+  bool aHeld = isButtonHeld(BTN_A);
+  if (!aHeld) {
+    sabotageDownAt = 0;
+    sabotageUsed = false;
+  }
   if (taskActive()) {
     if (phase != G_PLAYING && phase != G_LOBBY) { taskCancel(); needRedraw = true; }
     else if (isButtonPressed(BTN_START)) {
@@ -652,6 +682,18 @@ void gameUpdate() {
       needRedraw = true;
     }
     else {
+      // A is still available to the minigame itself. An imposter must hold
+      // it long enough to sabotage, so a normal Wires A press is harmless.
+      if (myRole == ROLE_IMP && aHeld && !sabotageUsed) {
+        if (sabotageDownAt == 0) sabotageDownAt = millis();
+        if (millis() - sabotageDownAt >= SABOTAGE_HOLD_MS) {
+          sabotageUsed = true;
+          if (isHost) {
+            if (hostSabotage(myId())) taskCancel();
+          }
+          else { char m[16]; snprintf(m, sizeof(m), "SAB:%s", myId()); req(m); }
+        }
+      }
       taskUpdate();
       int jc = taskJustCompleted();
       if (jc >= 0 && myRole == ROLE_CREW) {   // only crew tasks count
@@ -662,6 +704,7 @@ void gameUpdate() {
       needRedraw = true;          // finished/cancelled -> back to HUD
     }
   }
+  if (!taskActive()) { sabotageDownAt = 0; sabotageUsed = false; }
 
   // ---- input ----
   switch (phase) {
