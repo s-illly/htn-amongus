@@ -1,22 +1,25 @@
 #pragma once
 
-// Crew tasks: four NFC-triggered minigames. Any tag scan opens the next
-// uncompleted task, in fixed order (0 Wires, 1 Garbage, 2 Window Wipe,
-// 3 Rhythm) -- which physical tag was scanned doesn't matter, so this doesn't
-// depend on reliably reading/pairing individual tag UIDs. Wires and Garbage
-// are first so a time-boxed demo (e.g. one showcased per judge) always
-// reaches those two; Window Wipe and Rhythm exist to show there's more depth,
-// without needing to actually be reached live. Role permissions and progress
-// accounting are handled by game.cpp.
+// Crew tasks: four NFC-triggered minigames. Each task has its own NFC UID;
+// replace the placeholders below with the UIDs printed by scanNFC().
 
 #define NUM_TASKS 4
+
+// UIDs are uppercase hex with no separators, matching scanNFC() output.
+#define TASK_UID_WIRES       "04EAD297DD2A81"
+#define TASK_UID_GARBAGE     "048F5798DD2A81"
+#define TASK_UID_WINDOW_WIPE "047CBF97DD2A81"
+#define TASK_UID_RHYTHM      "04D85798DD2A81"
 
 void setupTasks();
 void resetTasks();                    // new game: clear my completed tasks
 
-// A tag was scanned: starts the next uncompleted minigame, in fixed order.
-// Returns true if one was started (false if one's already active, or every
-// task is already done).
+// Returns the fixed task index for a configured UID, or -1 for an unknown tag.
+int taskIndexForUid(const char *uid);
+bool taskIsCompleted(int t);
+
+// A tag was scanned: starts that tag's configured minigame.
+// Returns true if one was started (false if unknown, already active, or done).
 bool taskTryStart(const char *uid);
 bool taskActive();
 void taskUpdate();                    // run + render the current minigame

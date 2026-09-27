@@ -37,6 +37,13 @@ static unsigned long ddrLastSpawn;
 
 static uint16_t NAVY, WHITE, GREEN, RED, YELLOW, DIM;
 
+static const char *taskUids[NUM_TASKS] = {
+  TASK_UID_WIRES,
+  TASK_UID_GARBAGE,
+  TASK_UID_WINDOW_WIPE,
+  TASK_UID_RHYTHM
+};
+
 void setupTasks() {
   NAVY = gfxColor(10, 12, 34); WHITE = gfxColor(255, 255, 255);
   GREEN = gfxColor(70, 210, 90); RED = gfxColor(220, 60, 60);
@@ -70,15 +77,23 @@ static void enterTask(int t) {
   else if (t == 3) { for (int i = 0; i < DDR_MAX; i++) ddr[i].on = false; ddrHits = 0; ddrShown = -1; ddrLastSpawn = 0; }
 }
 
-// Which specific tag was scanned no longer matters -- any tag just opens the
-// next uncompleted task, in fixed order. Simpler than mapping tag identity to
-// a task, and doesn't depend on reliably reading a tag's UID.
-bool taskTryStart(const char * /*uid*/) {
+int taskIndexForUid(const char *uid) {
+  if (!uid) return -1;
+  for (int t = 0; t < NUM_TASKS; t++)
+    if (strcmp(uid, taskUids[t]) == 0) return t;
+  return -1;
+}
+
+bool taskIsCompleted(int t) {
+  return t >= 0 && t < NUM_TASKS && doneTask[t];
+}
+
+bool taskTryStart(const char *uid) {
   if (curTask >= 0) return false;
-  for (int t = 0; t < NUM_TASKS; t++) {
-    if (!doneTask[t]) { enterTask(t); return true; }
-  }
-  return false;  // every task already completed
+  int t = taskIndexForUid(uid);
+  if (t < 0 || doneTask[t]) return false;
+  enterTask(t);
+  return true;
 }
 
 void taskStartIndex(int t) {

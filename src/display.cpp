@@ -221,6 +221,20 @@ void showHUD(bool alive, int aliveCount, int colorR, int colorG, int colorB,
   tft.print("hold START=role");
 }
 
+void showTaskAlreadyCompleted(int taskIndex) {
+  const char *names[] = { "WIRES", "GARBAGE", "WINDOW WIPE", "RHYTHM" };
+  const char *name = (taskIndex >= 0 && taskIndex < 4) ? names[taskIndex] : "TASK";
+  tft.fillScreen(C_NAVY);
+  tft.setTextColor(tft.color565(240, 220, 60), C_NAVY);
+  tft.setTextSize(3);
+  int nameWidth = strlen(name) * 18;
+  tft.setCursor((320 - nameWidth) / 2, 80);
+  tft.print(name);
+  tft.setTextSize(2);
+  tft.setCursor(58, 130);
+  tft.print("ALREADY COMPLETED");
+}
+
 uint16_t gfxColor(uint8_t r, uint8_t g, uint8_t b) { return tft.color565(r, g, b); }
 void gfxClear(uint16_t color) { tft.fillScreen(color); }
 void gfxText(int x, int y, int size, uint16_t color, const char *s) {

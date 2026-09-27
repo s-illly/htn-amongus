@@ -93,6 +93,8 @@ static int lastLobbyPlayers = -1;
 static bool bodyNearby = false;  // drives the "hold B to report" HUD hint
 static int lastKillCdShown = -1; // drives the role-card cooldown redraw tick
 static unsigned long lastAskMs = 0; // retry cadence for a missed role assignment
+static unsigned long taskNoticeUntil = 0;
+static int taskNoticeIndex = -1;
 
 // Global task progress (host authoritative, broadcast via PROG). Crew task
 // completions add to it; imposter sabotage subtracts from it.
@@ -129,6 +131,7 @@ static void applyPhase(GPhase p, int durSecs) {
   if (p == G_LOBBY) unlockColorAssignments();
   if (prev == G_LOBBY && p == G_PLAYING) { resetTasks(); taskDone = 0; }  // new game
   if (p != G_PLAYING && taskActive()) taskCancel();  // a meeting interrupts a task
+  if (p != G_PLAYING) { taskNoticeUntil = 0; taskNoticeIndex = -1; }
 }
 
 static void setPhaseHost(GPhase p, int durSecs) {
@@ -639,12 +642,23 @@ void setupGame() {
   myRole = ROLE_NONE;
 }
 
-// called by main when an NFC tag is scanned: start that tag's task minigame.
-// Allowed in LOBBY too so a single badge can test tasks without a full game.
+// called by main when an NFC tag is scanned: start that tag's configured task.
 void gameOnNfc(const char *uid) {
+  if (phase != G_PLAYING) return;
+  if (taskNoticeUntil != 0 && (long)(taskNoticeUntil - millis()) > 0) return;
   int mi = rosterIndexOfId(myId());
   bool alive = (mi < 0) || aliveIdx(mi);
-  if ((phase == G_PLAYING || phase == G_LOBBY) && alive && !taskActive()) taskTryStart(uid);
+  if (!alive || taskActive()) return;
+
+  int t = taskIndexForUid(uid);
+  if (t < 0) return;  // unconfigured tag
+  if (taskIsCompleted(t)) {
+    taskNoticeIndex = t;
+    taskNoticeUntil = millis() + 3000;
+    needRedraw = true;
+    return;
+  }
+  taskTryStart(uid);
 }
 
 void gameUpdate() {
@@ -655,6 +669,17 @@ void gameUpdate() {
     lastAskMs = millis();
     char m[12]; snprintf(m, sizeof(m), "ASK:%s", myId());
     broadcastMessage(m);
+  }
+
+  if (taskNoticeUntil != 0) {
+    if ((long)(taskNoticeUntil - millis()) > 0) {
+      if (needRedraw) showTaskAlreadyCompleted(taskNoticeIndex);
+      needRedraw = false;
+      return;
+    }
+    taskNoticeUntil = 0;
+    taskNoticeIndex = -1;
+    needRedraw = true;
   }
 
   // HOME: quick tap = emergency meeting; holding it does nothing.
