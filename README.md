@@ -64,7 +64,7 @@ actively doing a task so a stray tag doesn't pop a minigame up.
 | **Discuss** | B | End discussion early, move to voting |
 | **Voting** | LEFT / RIGHT | Cycle your vote target (living players, or SKIP). Dead players can't vote and can't be voted for. |
 | | A | Cast your vote |
-| **Game over** | START | Return to the lobby (host only) |
+| **Game over** | START | Return everyone to the lobby (any badge). The next person to press START hosts the next round. |
 
 Kills and body reports aren't manually aimed -- there's no target-cycling
 button. The nearest qualifying badge in ESP-NOW proximity range (an RSSI

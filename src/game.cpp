@@ -128,7 +128,19 @@ static void applyPhase(GPhase p, int durSecs) {
   needRedraw = true;
   lastCd = -1;
   if (p == G_VOTING) { voteSel = 0; myVoted = false; }
-  if (p == G_LOBBY) unlockColorAssignments();
+  if (p == G_LOBBY) {
+    // back to the lobby: every badge drops the old round's state, including
+    // host status -- whoever presses START next hosts the next round
+    unlockColorAssignments();
+    resetPlayerStates();
+    isHost = false;
+    myRole = ROLE_NONE; nImpTeam = 0;
+    winSide = 0;
+    myKillCooldownUntil = 0; killedFlashUntil = 0;
+    memset(lastKillMs, 0, sizeof(lastKillMs));
+    nVotes = 0;
+    taskDone = 0; taskTotal = 0;
+  }
   if (prev == G_LOBBY && p == G_PLAYING) { resetTasks(); taskDone = 0; }  // new game
   if (p != G_PLAYING && taskActive()) taskCancel();  // a meeting interrupts a task
   if (p != G_PLAYING) { taskNoticeUntil = 0; taskNoticeIndex = -1; }
@@ -763,10 +775,10 @@ void gameUpdate() {
     case G_GATHER:  gatherInput();  break;
     case G_DISCUSS: discussInput(); break;
     case G_VOTING:  votingInput();  break;
-    case G_OVER:    if (isButtonPressed(BTN_START) && isHost) {
-                      resetPlayerStates(); winSide = 0; myRole = ROLE_NONE;
-                      setPhaseHost(G_LOBBY, 0);
-                    } break;
+    // any badge can end the game-over screen (the round's host may be out of
+    // range or switched off); the lobby reset itself happens in applyPhase()
+    case G_OVER:    if (isButtonPressed(BTN_START)) setPhaseHost(G_LOBBY, 0);
+                    break;
     default: break;
   }
 

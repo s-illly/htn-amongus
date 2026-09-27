@@ -6,7 +6,7 @@
 #define START_BTN  9
 
 static uint16_t debouncedState = 0;
-static uint16_t lastDebouncedState = 0;
+static uint16_t pressedEdges = 0;   // buttons that went down this loop iteration
 static uint16_t lastRawState = 0;
 static unsigned long lastDebounceTime = 0;
 
@@ -25,6 +25,11 @@ void setupButtons() {
 }
 
 void updateButtons() {
+  // A press is reported for exactly one loop iteration: the loop runs many
+  // times per 10ms poll, and a lingering edge would let one physical press
+  // fire twice (e.g. game over -> lobby -> straight into a new round).
+  pressedEdges = 0;
+
   // Enforce a ~10ms polling and debounce interval
   if (millis() - lastDebounceTime < 10) {
     return;
@@ -58,7 +63,7 @@ void updateButtons() {
   // 4. Debounce evaluation
   // If the raw state hasn't changed since the last 10ms check, it's considered stable.
   if (currentRawState == lastRawState) {
-    lastDebouncedState = debouncedState;
+    pressedEdges = currentRawState & ~debouncedState;
     debouncedState = currentRawState;
   }
   
@@ -71,7 +76,7 @@ uint16_t getButtons() {
 
 bool isButtonPressed(uint16_t buttonMask) {
   // Returns true if the bit is set in the current state but was NOT set in the previous state
-  return (debouncedState & buttonMask) && !(lastDebouncedState & buttonMask);
+  return (pressedEdges & buttonMask) != 0;
 }
 
 bool isButtonHeld(uint16_t buttonMask) {
