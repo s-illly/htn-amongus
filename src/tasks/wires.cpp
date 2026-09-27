@@ -56,4 +56,4 @@ static void run() {
   }
 }
 
-extern const TaskDef TASK_WIRES = { "WIRES", "04EAD297DD2A81", start, run };
+extern const TaskDef TASK_WIRES = { "WIRES", "04EAD297DD2A81", start, run, 20000 };

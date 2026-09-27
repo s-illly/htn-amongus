@@ -107,4 +107,4 @@ static void run() {
   }
 }
 
-extern const TaskDef TASK_GARBAGE = { "GARBAGE", "048F5798DD2A81", start, run };
+extern const TaskDef TASK_GARBAGE = { "GARBAGE", "048F5798DD2A81", start, run, 20000 };

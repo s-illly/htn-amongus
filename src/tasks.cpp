@@ -8,8 +8,6 @@
 // dispatches to the TaskDefs in src/tasks/task_list.cpp. The minigames
 // themselves live in src/tasks/.
 
-#define TASK_TIMEOUT_MS 20000
-
 static bool doneTask[MAX_TASKS];
 static int curTask = -1;          // which minigame is running (-1 = none)
 static unsigned long taskStart = 0;
@@ -100,6 +98,6 @@ void taskUpdate() {
   if (curTask < 0) return;
   // no button cancel: A/B/d-pad are all game inputs. Ends on completion,
   // a 20s timeout, or a meeting (game.cpp cancels on phase change).
-  if (millis() - taskStart > TASK_TIMEOUT_MS) { taskCancel(); return; }
+  if (millis() - taskStart > TASK_LIST[curTask]->timeoutMs) { taskCancel(); return; }
   TASK_LIST[curTask]->run();
 }

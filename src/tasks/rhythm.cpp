@@ -101,4 +101,4 @@ static void run() {
   if (ddrHits >= DDR_HITS) { flashLEDs(0, 220, 0, 400); taskFinish(); return; }
 }
 
-extern const TaskDef TASK_RHYTHM = { "RHYTHM", "04D85798DD2A81", start, run };
+extern const TaskDef TASK_RHYTHM = { "RHYTHM", "04D85798DD2A81", start, run, 20000 };

@@ -8,6 +8,7 @@ struct TaskDef {
   const char *uid;    // NFC tag UID: uppercase hex, no separators (as scanNFC() prints)
   void (*start)();    // reset all state; the next run() should redraw from scratch
   void (*run)();      // one frame of input + rendering; call taskFinish() when won
+  unsigned long timeoutMs; // maximum time allowed for the whole task
 };
 
 // ---- helpers shared by every minigame ----

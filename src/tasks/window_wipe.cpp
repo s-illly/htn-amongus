@@ -150,4 +150,4 @@ static void run() {
   if (pct >= 85) { flashLEDs(0, 220, 0, 400); taskFinish(); return; }
 }
 
-extern const TaskDef TASK_WINDOW_WIPE = { "WINDOW WIPE", "047CBF97DD2A81", start, run };
+extern const TaskDef TASK_WINDOW_WIPE = { "WINDOW WIPE", "047CBF97DD2A81", start, run, 20000 };
