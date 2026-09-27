@@ -5,8 +5,6 @@
 #include "display.h"
 #include "leds.h"
 
-static const char *TASK_NAMES[NUM_TASKS] = { "WIRES", "GARBAGE", "WINDOW WIPE", "RHYTHM" };
-
 enum Mode { MENU, TASK };
 static Mode mode = MENU;
 static int  sel = 0;
@@ -17,11 +15,11 @@ static void drawMenu() {
   uint16_t dim = gfxColor(140, 140, 160), hi = gfxColor(70, 210, 90);
   gfxClear(bg);
   gfxText(60, 10, 3, white, "TASK TEST");
-  for (int i = 0; i < NUM_TASKS; i++) {
+  for (int i = 0; i < taskCount(); i++) {
     int y = 54 + i * 30;
     bool s = (i == sel);
     if (s) gfxFillRect(28, y - 3, 264, 26, gfxColor(40, 60, 40));
-    gfxText(44, y, 3, s ? hi : dim, TASK_NAMES[i]);
+    gfxText(44, y, 3, s ? hi : dim, taskName(i));
   }
   gfxText(30, 224, 2, dim, "A=play  START=exit");
   drawn = true;
@@ -41,8 +39,8 @@ void taskTestLoop() {
     case MENU:
     default:
       if (!drawn) drawMenu();
-      if (isButtonPressed(BTN_UP))   { sel = (sel + NUM_TASKS - 1) % NUM_TASKS; drawn = false; }
-      if (isButtonPressed(BTN_DOWN)) { sel = (sel + 1) % NUM_TASKS; drawn = false; }
+      if (isButtonPressed(BTN_UP))   { sel = (sel + taskCount() - 1) % taskCount(); drawn = false; }
+      if (isButtonPressed(BTN_DOWN)) { sel = (sel + 1) % taskCount(); drawn = false; }
       if (isButtonPressed(BTN_A))    { taskStartIndex(sel); mode = TASK; }
       return;
   }

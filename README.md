@@ -73,8 +73,8 @@ threshold, roughly "a couple meters," tuned via `KILL_RSSI`/`REPORT_RSSI` in
 
 ## Tasks
 
-There are four NFC tags, each mapped 1:1 to a minigame by its UID
-(`TASK_UID_*` in `include/tasks.h`). With AUX1 on, tap a tag during play to
+There are four NFC tags, each mapped 1:1 to a minigame by its UID (set in
+that minigame's file under `src/tasks/`). With AUX1 on, tap a tag during play to
 launch its minigame:
 
 | Tag | Minigame | How to win |
@@ -82,7 +82,7 @@ launch its minigame:
 | Wires | Button sequence | Enter the shown sequence of arrows/A/B (5 inputs), 3 rounds |
 | Garbage | Tilt maze | Tilt the badge to roll the trash around randomized walls into the chute, 3 times |
 | Window wipe | Shake to clean | Hold the badge upright and fan-wipe it; harder wipes clean faster. Done at 85% |
-| Rhythm | DDR | Hit the matching D-pad direction as arrows cross the line; 8 hits within 20s |
+| Rhythm | DDR | Hit the matching D-pad direction as arrows cross the line; 8 hits |
 
 Rules:
 - The HUD shows a **shared task bar** for the whole crew. The host sets the
@@ -94,10 +94,27 @@ Rules:
 - Only living crewmates get credit. Imposters can play tasks to blend in, but
   completing one does nothing; holding A for a second mid-task sabotages
   instead.
-- Any meeting cancels an in-progress task.
+- Any minigame times out after 20s, and any meeting cancels an in-progress task.
 
 To use your own tags, flip AUX1 on, scan each one, copy the UID printed on the
-serial monitor into `include/tasks.h`, and reflash.
+serial monitor into the matching task file in `src/tasks/`, and reflash.
+
+### Adding a task
+
+Each minigame is a single file in `src/tasks/` that defines a `TaskDef`
+(see `include/task_api.h`):
+
+```cpp
+static void start() { /* reset state; next run() redraws from scratch */ }
+static void run()   { /* one frame: read input, draw; call taskFinish() when won */ }
+
+extern const TaskDef TASK_MY_GAME = { "MY GAME", "04AABBCCDD2A81", start, run };
+```
+
+Then declare it and add it to `TASK_LIST` in `src/tasks/task_list.cpp`.
+That's it -- the test menu, NFC lookup, and "ALREADY COMPLETED" notice all read
+from the list. Shared helpers (`taskFinish()`, the palette, `drawGlyph()`)
+come from `task_api.h`; drawing primitives (`gfx*`) from `display.h`.
 
 ### Task test mode
 
@@ -161,7 +178,10 @@ per-device configuration needed.
 | `espnow_prox.*` | Proximity/RSSI ranging used for kills and body reports |
 | `players.*` | Player identity, color assignment, roster, and per-player state (alive, role, meetings) |
 | `game.*` | The host-authoritative game state machine: phases, roles, votes, kills, task progress, sabotage |
-| `tasks.*` | The four NFC-triggered task minigames and the tag UID mapping |
+| `tasks.*` | Task framework: which minigame is running/done, NFC UID lookup, timeout |
+| `task_api.h` | The `TaskDef` interface and shared helpers every minigame uses |
+| `tasks/task_list.cpp` | The list of every minigame in the game |
+| `tasks/*.cpp` | One file per minigame (wires, garbage, window wipe, rhythm) |
 | `tasktest.*` | Solo task test harness (hold A at boot) |
 | `buttons.*` | Shift-register + START button reading and debouncing |
 | `leds.*` | The 6-LED status strip |

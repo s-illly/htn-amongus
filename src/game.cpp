@@ -17,9 +17,9 @@
 #define SABOTAGE_HOLD_MS 1000
 #define KILL_CD_MS   20000
 
-// How many of the NUM_TASKS minigames each crewmate must finish for their
-// share of the win bar to count -- deliberately <= NUM_TASKS so the crew win
-// condition is reachable even when not every one of the NUM_TASKS tags is
+// How many of the taskCount() minigames each crewmate must finish for their
+// share of the win bar to count -- deliberately <= taskCount() so the crew win
+// condition is reachable even when not every one of the task tags is
 // actually in play (extra minigames are still playable, just don't keep
 // crediting progress past this per-player cap).
 #define TASKS_TO_WIN 2
@@ -220,7 +220,7 @@ static void hostStartGame() {
   broadcastUniqueColors();
   broadcastCfg();
   broadcastAlive();
-  // crew task pool: each crewmate must finish TASKS_TO_WIN of the NUM_TASKS minigames
+  // crew task pool: each crewmate must finish TASKS_TO_WIN of the taskCount() minigames
   resetTasks();
   taskDone = 0;
   memset(taskCredit, 0, sizeof(taskCredit));
@@ -673,7 +673,7 @@ void gameUpdate() {
 
   if (taskNoticeUntil != 0) {
     if ((long)(taskNoticeUntil - millis()) > 0) {
-      if (needRedraw) showTaskAlreadyCompleted(taskNoticeIndex);
+      if (needRedraw) showTaskAlreadyCompleted(taskName(taskNoticeIndex));
       needRedraw = false;
       return;
     }

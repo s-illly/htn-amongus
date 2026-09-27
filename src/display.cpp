@@ -221,9 +221,7 @@ void showHUD(bool alive, int aliveCount, int colorR, int colorG, int colorB,
   tft.print("hold START=role");
 }
 
-void showTaskAlreadyCompleted(int taskIndex) {
-  const char *names[] = { "WIRES", "GARBAGE", "WINDOW WIPE", "RHYTHM" };
-  const char *name = (taskIndex >= 0 && taskIndex < 4) ? names[taskIndex] : "TASK";
+void showTaskAlreadyCompleted(const char *name) {
   tft.fillScreen(C_NAVY);
   tft.setTextColor(tft.color565(240, 220, 60), C_NAVY);
   tft.setTextSize(3);

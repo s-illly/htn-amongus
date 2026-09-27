@@ -31,7 +31,7 @@ void showHUD(bool alive, int aliveCount, int colorR, int colorG, int colorB,
              bool bodyNearby);
 
 // Temporary notice shown after scanning a task tag whose task is already done.
-void showTaskAlreadyCompleted(int taskIndex);
+void showTaskAlreadyCompleted(const char *taskName);
 
 // Voting screen: the current pick (a color, or SKIP), countdown, and hints.
 void showVote(const char *name, int colorR, int colorG, int colorB,
