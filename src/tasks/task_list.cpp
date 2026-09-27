@@ -8,6 +8,7 @@ extern const TaskDef TASK_GARBAGE;
 extern const TaskDef TASK_WINDOW_WIPE;
 extern const TaskDef TASK_RHYTHM;
 extern const TaskDef TASK_SIMON;
+extern const TaskDef TASK_DINO;
 
 const TaskDef *const TASK_LIST[] = {
   &TASK_WIRES,
@@ -15,6 +16,7 @@ const TaskDef *const TASK_LIST[] = {
   &TASK_WINDOW_WIPE,
   &TASK_RHYTHM,
   &TASK_SIMON,
+  &TASK_DINO,
 };
 
 const int TASK_LIST_COUNT = sizeof(TASK_LIST) / sizeof(TASK_LIST[0]);
